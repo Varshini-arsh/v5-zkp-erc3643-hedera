@@ -161,6 +161,27 @@ connect, submit a ZK proof, and claim ERC-3643-gated tokens directly against
 the deployed contracts above — no terminal, no private key pasted anywhere.
 See `frontend/README.md` for how to run it.
 
+This was run live end to end with a real MetaMask wallet
+(`0x85E8CFB0455C1D16fE70931059AC60DB7Ce97F27`) on Hedera Testnet: connect →
+submit a ZK proof → `isVerified` flips to `true` → claim 100 `V5RWA` tokens.
+Both steps produced real, independently checkable transactions:
+
+- ZK proof verified on-chain: tx
+  `0xdb9f49638ffc55c8be6d76605cbfbd531b917bf7432e8d82e928836b3e55f427`
+  (block 40878746)
+- Demo tokens claimed: tx
+  `0xdf0fefb58c5fc76b1615c71184f299ed1c78a1587d4a2be5ee3fe31933fc6c2d`
+  (block 40878837)
+
+![MetaMask: verified and claimed](docs/screenshots/08_metamask_verified_and_claimed.png)
+
+![MetaMask: transaction hashes for both steps](docs/screenshots/09_metamask_tx_hashes.png)
+
+The right-hand panel in both screenshots is MetaMask's own Activity tab,
+independently confirming the same two contract interactions — the page
+isn't just displaying claimed results, the wallet itself recorded them as
+real transactions.
+
 ## Results
 
 **1. Local proof generation and verification — the whole eligible dataset.**

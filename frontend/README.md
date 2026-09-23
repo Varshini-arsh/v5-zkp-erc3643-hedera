@@ -38,3 +38,27 @@ extension installed.
 Contract addresses are hardcoded in `index.html` from
 `artifacts/deployment/hedera_testnet_erc3643.json`. If you redeploy, update
 that `DEPLOYMENT` object.
+
+## Confirmed working live
+
+Run end to end with a real MetaMask wallet on Hedera Testnet: connect →
+submit proof → `isVerified` becomes `true` → claim tokens. See the
+"Live wallet-connected demo" section in the main `README.md` for the
+transaction hashes and screenshots.
+
+## Troubleshooting
+
+- **"missing revert data" when submitting a proof or claiming**: MetaMask's
+  automatic gas estimation doesn't reliably work over Hedera's JSON-RPC
+  relay for these calls, even though the transaction itself succeeds. Both
+  calls in `index.html` already pass an explicit `gasLimit` to skip that
+  estimation step. If you still hit this, the connected account most likely
+  has 0 HBAR — MetaMask can silently get stuck on the confirmation screen
+  when it can't cover the network fee (see next point).
+- **"Confirm"/"Review alert" button won't click, or the popup seems stuck**:
+  almost always means the connected account has insufficient HBAR to pay the
+  network fee. Fund it from the faucet at `portal.hedera.com` (Faucet tab)
+  and try again.
+- **A MetaMask popup doesn't appear when you click "Connect MetaMask"**: it
+  may have opened as a separate window rather than in front — check your
+  taskbar, or click the MetaMask extension icon in Chrome's toolbar.

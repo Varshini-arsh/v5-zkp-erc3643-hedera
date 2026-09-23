@@ -210,7 +210,10 @@ submitProofBtn.onclick = async () => {
 
     const zkpRegistry = new ethers.Contract(DEPLOYMENT.zkpRegistry, ZKP_REGISTRY_ABI, signer);
     proofStatus.textContent = "Waiting for wallet confirmation...";
-    const tx = await zkpRegistry.verifyEncoded(encoded);
+    // Hedera's RPC relay doesn't reliably support MetaMask's automatic gas
+    // estimation for this call, so a fixed limit is given explicitly
+    // (measured on-chain usage is ~306,137 gas; 600,000 gives headroom).
+    const tx = await zkpRegistry.verifyEncoded(encoded, { gasLimit: 600000n });
     proofStatus.textContent = "Tx sent: " + tx.hash + "\nWaiting for confirmation...";
     const receipt = await tx.wait();
     proofStatus.innerHTML = '<span class="ok">Verified on-chain.</span> Tx: ' + tx.hash + " (block " + receipt.blockNumber + ")";
@@ -224,7 +227,7 @@ claimBtn.onclick = async () => {
   claimStatus.textContent = "Waiting for wallet confirmation...";
   try {
     const token = new ethers.Contract(DEPLOYMENT.token, TOKEN_ABI, signer);
-    const tx = await token.claimDemoTokens();
+    const tx = await token.claimDemoTokens({ gasLimit: 300000n });
     claimStatus.textContent = "Tx sent: " + tx.hash + "\nWaiting for confirmation...";
     const receipt = await tx.wait();
     claimStatus.innerHTML = '<span class="ok">Claimed 100 V5RWA.</span> Tx: ' + tx.hash + " (block " + receipt.blockNumber + ")";
