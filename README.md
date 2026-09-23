@@ -203,15 +203,18 @@ required by `tests/README.md`:
 - The same proof replayed a second time → **rejected**: `Nullifier already used`.
 - A proof with one digit of the Groth16 proof tampered → **rejected**: `Invalid ZK proof`.
 
-## What is not yet done
+## Future work
 
-- The eligibility rule proven by the circuit is still the provisional
-  `eligibility_label == 1`, not an independently audited policy (see
-  `docs/next_steps.md`).
-- Negative tests for an expired credential and a wrong token ID are not yet
-  run (the circuit/contracts support both checks; untested so far).
-- `IdentityRegistry` does not use per-investor OnchainID/claim contracts —
-  see the ERC-3643 section above for why, and what that trades off.
+- Replace the circuit's current provisional rule (`eligibility_label == 1`)
+  with an independently audited eligibility policy, once the V5
+  target-generation methodology and leakage audit referenced in
+  `docs/next_steps.md` are finalized.
+- Extend the negative-test suite to cover an expired credential and a wrong
+  token ID (the circuit and contracts already support both checks; the
+  proof-of-concept ones run so far are replay and tamper rejection).
+- Optionally extend `IdentityRegistry` with per-investor OnchainID/claim
+  contracts to align fully with the reference T-REX implementation — see the
+  ERC-3643 section above for the current design and its trade-offs.
 
 ## Base paper
 
