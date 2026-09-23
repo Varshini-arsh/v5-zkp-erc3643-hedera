@@ -197,6 +197,29 @@ contract RWAToken is IERC3643 {
         emit Transfer(address(0), _to, _amount);
     }
 
+    uint256 public constant DEMO_CLAIM_AMOUNT = 100 * 1e18;
+    mapping(address => bool) public hasClaimedDemoTokens;
+
+    /**
+     * Not part of the ERC-3643 interface. Lets any wallet that has been
+     * ZK-verified (via ZKPVerifierRegistryBytesV2) mint itself a fixed demo
+     * allocation directly from a connected wallet (e.g. MetaMask), without
+     * needing the contract owner's key. Still fully gated by the same
+     * identityRegistry.isVerified() / compliance.canTransfer() checks as
+     * mint(), and one-time per address.
+     */
+    function claimDemoTokens() external {
+        require(!hasClaimedDemoTokens[msg.sender], "already claimed");
+        require(_identityRegistry.isVerified(msg.sender), "receiver not ZK-verified");
+        require(_compliance.canTransfer(address(0), msg.sender, DEMO_CLAIM_AMOUNT), "compliance check failed");
+
+        hasClaimedDemoTokens[msg.sender] = true;
+        _totalSupply += DEMO_CLAIM_AMOUNT;
+        _balances[msg.sender] += DEMO_CLAIM_AMOUNT;
+        _compliance.created(msg.sender, DEMO_CLAIM_AMOUNT);
+        emit Transfer(address(0), msg.sender, DEMO_CLAIM_AMOUNT);
+    }
+
     function burn(address _userAddress, uint256 _amount) public override onlyOwner {
         require(_balances[_userAddress] >= _amount, "insufficient balance");
         _balances[_userAddress] -= _amount;

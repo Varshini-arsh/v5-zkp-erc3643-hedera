@@ -144,10 +144,22 @@ Full ERC-3643 stack — `artifacts/deployment/hedera_testnet_erc3643.json`:
 | Compliance | `0x0829a3bd4C8a9EEC1CEA7731CC8EDa20242E39ec` | — |
 | Groth16Verifier | `0xcAE02778b1b935F226fc3526a07eC4Bfb0A5d909` | — |
 | ZKPVerifierRegistryBytesV2 | `0x4447c6cea10fcdC88b3B61b05657B7061A7AD6C7` | — |
-| RWAToken (ERC-3643) | `0xC7D1b2b2Fe83f8e0B77Ca0937Eb5d983764B2fc8` | `0.0.10677655` |
+| RWAToken (ERC-3643) | `0x1e3D8daAe4164233c9BAe250A57D4CdA9cf90E6A` | — |
+
+(`RWAToken` was redeployed once after the initial deployment to add
+`claimDemoTokens()` for the wallet-connected demo below; `Compliance` was
+rebound to the new address. `IdentityRegistry`, `Compliance`,
+`Groth16Verifier`, and `ZKPVerifierRegistryBytesV2` are unchanged.)
 
 Look up any of these on [HashScan Testnet](https://hashscan.io/testnet) by
 pasting the address into the search bar.
+
+## Live wallet-connected demo
+
+`frontend/index.html` is a static page where a real MetaMask wallet can
+connect, submit a ZK proof, and claim ERC-3643-gated tokens directly against
+the deployed contracts above — no terminal, no private key pasted anywhere.
+See `frontend/README.md` for how to run it.
 
 ## Results
 

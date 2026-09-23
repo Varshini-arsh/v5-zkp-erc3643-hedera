@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>V5 RWA — ZKP + ERC-3643 Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    max-width: 720px;
+    margin: 40px auto;
+    padding: 0 16px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.4rem; }
+  section {
+    border: 1px solid #8883;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  button {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    background: #5b3df0;
+    color: white;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  button:disabled { background: #8888; cursor: not-allowed; }
+  .status { font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; }
+  .ok { color: #1a8f4c; font-weight: 600; }
+  .no { color: #c23; font-weight: 600; }
+  select, input[type="file"] { width: 100%; margin: 8px 0; }
+  .addr { font-family: monospace; font-size: 0.85rem; opacity: 0.8; }
+</style>
+</head>
+<body>
+
+<h1>V5 RWA — ZK-Verified Investor Onboarding (ERC-3643 on Hedera Testnet)</h1>
+<p>Connect a wallet, submit a ZK eligibility proof, and see the ERC-3643 token
+contract accept you as a compliant investor — enforced entirely on-chain.</p>
+
+<section>
+  <h3>1. Connect wallet</h3>
+  <button id="connectBtn">Connect MetaMask</button>
+  <p class="addr" id="addrLine">Not connected.</p>
+</section>
+
+<section>
+  <h3>2. Your compliance status</h3>
+  <div class="status" id="statusLine">Connect a wallet to check.</div>
+  <button id="refreshBtn" disabled>Refresh status</button>
+</section>
+
+<section>
+  <h3>3. Submit a ZK eligibility proof</h3>
+  <p>Pick one of the sample proofs (each can only be used once — the contract
+  rejects a replayed proof by design). If you get "nullifier already used",
+  just pick another sample.</p>
+  <select id="sampleSelect">
+    <option value="">-- choose a sample proof --</option>
+    <option value="sample_proofs/row_01028_INV001028.json">row_01028_INV001028</option>
+    <option value="sample_proofs/row_02525_INV002525.json">row_02525_INV002525</option>
+    <option value="sample_proofs/row_04064_INV004064.json">row_04064_INV004064</option>
+  </select>
+  <p>...or upload any proof file from <code>artifacts/batch/proofs/</code>:</p>
+  <input type="file" id="fileInput" accept="application/json" />
+  <br/>
+  <button id="submitProofBtn" disabled>Submit proof to verify on-chain</button>
+  <div class="status" id="proofStatus"></div>
+</section>
+
+<section>
+  <h3>4. Claim demo tokens</h3>
+  <p>Only works once you're ZK-verified (step 3). One claim per address.</p>
+  <button id="claimBtn" disabled>Claim 100 V5RWA</button>
+  <div class="status" id="claimStatus"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script>
+const DEPLOYMENT = {
+  identityRegistry: "0x654144ba97D32b06B37A2E5db540C4fbb788f9C2",
+  zkpRegistry: "0x4447c6cea10fcdC88b3B61b05657B7061A7AD6C7",
+  token: "0x1e3D8daAe4164233c9BAe250A57D4CdA9cf90E6A"
+};
+
+const HEDERA_TESTNET = {
+  chainId: "0x128", // 296
+  chainName: "Hedera Testnet",
+  nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 18 },
+  rpcUrls: ["https://testnet.hashio.io/api"],
+  blockExplorerUrls: ["https://hashscan.io/testnet"]
+};
+
+const IDENTITY_REGISTRY_ABI = [
+  "function isVerified(address) view returns (bool)"
+];
+const ZKP_REGISTRY_ABI = [
+  "function verifyEncoded(bytes encoded) returns (bool)"
+];
+const TOKEN_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function hasClaimedDemoTokens(address) view returns (bool)",
+  "function claimDemoTokens()",
+  "function symbol() view returns (string)"
+];
+
+let provider, signer, userAddress;
+
+const connectBtn = document.getElementById("connectBtn");
+const addrLine = document.getElementById("addrLine");
+const statusLine = document.getElementById("statusLine");
+const refreshBtn = document.getElementById("refreshBtn");
+const submitProofBtn = document.getElementById("submitProofBtn");
+const proofStatus = document.getElementById("proofStatus");
+const claimBtn = document.getElementById("claimBtn");
+const claimStatus = document.getElementById("claimStatus");
+const sampleSelect = document.getElementById("sampleSelect");
+const fileInput = document.getElementById("fileInput");
+
+connectBtn.onclick = async () => {
+  if (!window.ethereum) {
+    alert("MetaMask not found. Install it from metamask.io first.");
+    return;
+  }
+  try {
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: HEDERA_TESTNET.chainId }]
+      });
+    } catch (switchErr) {
+      if (switchErr.code === 4902) {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [HEDERA_TESTNET]
+        });
+      } else {
+        throw switchErr;
+      }
+    }
+
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+    userAddress = await signer.getAddress();
+    addrLine.textContent = "Connected: " + userAddress;
+    refreshBtn.disabled = false;
+    submitProofBtn.disabled = false;
+    await refreshStatus();
+  } catch (e) {
+    alert("Connection failed: " + (e.message || e));
+  }
+};
+
+refreshBtn.onclick = refreshStatus;
+
+async function refreshStatus() {
+  if (!userAddress) return;
+  const identityRegistry = new ethers.Contract(DEPLOYMENT.identityRegistry, IDENTITY_REGISTRY_ABI, provider);
+  const token = new ethers.Contract(DEPLOYMENT.token, TOKEN_ABI, provider);
+
+  const [verified, balance, claimed] = await Promise.all([
+    identityRegistry.isVerified(userAddress),
+    token.balanceOf(userAddress),
+    token.hasClaimedDemoTokens(userAddress)
+  ]);
+
+  statusLine.innerHTML =
+    "isVerified: " + (verified ? '<span class="ok">true</span>' : '<span class="no">false</span>') + "\n" +
+    "V5RWA balance: " + ethers.formatUnits(balance, 18) + "\n" +
+    "Already claimed demo tokens: " + claimed;
+
+  claimBtn.disabled = !(verified && !claimed);
+}
+
+async function readProofFile() {
+  const selected = sampleSelect.value;
+  if (selected) {
+    const res = await fetch(selected);
+    return res.json();
+  }
+  if (fileInput.files.length > 0) {
+    const text = await fileInput.files[0].text();
+    return JSON.parse(text);
+  }
+  throw new Error("Pick a sample proof or upload a proof file first.");
+}
+
+submitProofBtn.onclick = async () => {
+  proofStatus.textContent = "Preparing proof...";
+  try {
+    const proofFile = await readProofFile();
+    const p = proofFile.proof;
+    const publicSignals = proofFile.publicSignals;
+
+    // snarkjs Groth16 -> Solidity calldata ordering: swap each pi_b pair.
+    const a = [p.pi_a[0], p.pi_a[1]];
+    const b = [[p.pi_b[0][1], p.pi_b[0][0]], [p.pi_b[1][1], p.pi_b[1][0]]];
+    const c = [p.pi_c[0], p.pi_c[1]];
+
+    const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
+      ["uint256[2]", "uint256[2][2]", "uint256[2]", "uint256[6]"],
+      [a, b, c, publicSignals]
+    );
+
+    const zkpRegistry = new ethers.Contract(DEPLOYMENT.zkpRegistry, ZKP_REGISTRY_ABI, signer);
+    proofStatus.textContent = "Waiting for wallet confirmation...";
+    const tx = await zkpRegistry.verifyEncoded(encoded);
+    proofStatus.textContent = "Tx sent: " + tx.hash + "\nWaiting for confirmation...";
+    const receipt = await tx.wait();
+    proofStatus.innerHTML = '<span class="ok">Verified on-chain.</span> Tx: ' + tx.hash + " (block " + receipt.blockNumber + ")";
+    await refreshStatus();
+  } catch (e) {
+    proofStatus.innerHTML = '<span class="no">' + (e.reason || e.shortMessage || e.message || e) + '</span>';
+  }
+};
+
+claimBtn.onclick = async () => {
+  claimStatus.textContent = "Waiting for wallet confirmation...";
+  try {
+    const token = new ethers.Contract(DEPLOYMENT.token, TOKEN_ABI, signer);
+    const tx = await token.claimDemoTokens();
+    claimStatus.textContent = "Tx sent: " + tx.hash + "\nWaiting for confirmation...";
+    const receipt = await tx.wait();
+    claimStatus.innerHTML = '<span class="ok">Claimed 100 V5RWA.</span> Tx: ' + tx.hash + " (block " + receipt.blockNumber + ")";
+    await refreshStatus();
+  } catch (e) {
+    claimStatus.innerHTML = '<span class="no">' + (e.reason || e.shortMessage || e.message || e) + '</span>';
+  }
+};
+</script>
+</body>
+</html>
