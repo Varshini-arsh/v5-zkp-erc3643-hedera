@@ -1,5 +1,7 @@
 # V5 ZKP + ERC-3643 Eligibility Proof System for Hedera RWA Tokenization
 
+**Live demo:** https://v5-zkp-erc3643-hedera-frontend.vercel.app (needs MetaMask and a funded Hedera Testnet account)
+
 This project adds a privacy-preserving, ZK-proof-gated ERC-3643 compliance
 layer to the Hedera-based RWA (Real-World Asset) tokenization platform
 described in the base paper *"A Real-World Fractional Assets Tokenization

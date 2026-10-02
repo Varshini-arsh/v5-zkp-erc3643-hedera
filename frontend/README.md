@@ -19,6 +19,18 @@ npx serve .
 open the printed `http://localhost:...` URL in a browser with the MetaMask
 extension installed.
 
+## Deploy on Vercel
+
+Live at https://v5-zkp-erc3643-hedera-frontend.vercel.app
+
+The page is fully static, so Vercel needs no build step.
+
+1. Import the GitHub repo in Vercel.
+2. Set **Root Directory** to `frontend` and **Framework Preset** to `Other`.
+3. Deploy. Every push to `main` redeploys automatically.
+
+`frontend/vercel.json` already turns off the build and install steps.
+
 ## Steps in the page
 
 1. **Connect MetaMask** — prompts to add/switch to Hedera Testnet
